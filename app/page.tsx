@@ -1,0 +1,33 @@
+'use client';
+import { useEffect, useState } from 'react';
+type Key='spark'|'echo'|'root'|'pulse'|'seed'|'trunk'|'particle'|'law'|'star'|'life'|'flower';
+type Game={existence:number;seeds:number;bought:Partial<Record<Key,number>>;last:number;collapses:number};
+const NODES:{id:Key;name:string;glyph:string;cost:number;max:number;needs?:Key;kind:string;desc:string}[]=[
+{id:'spark',name:'First Spark',glyph:'✦',cost:1,max:20,kind:'root',desc:'+1 potential each heartbeat'},
+{id:'echo',name:'Echo of Nothing',glyph:'◌',cost:8,max:10,needs:'spark',kind:'root',desc:'Sparks strengthen each other'},
+{id:'root',name:'Root of Becoming',glyph:'⌁',cost:40,max:8,needs:'echo',kind:'root',desc:'Production grows with every root'},
+{id:'pulse',name:'Astral Pulse',glyph:'✧',cost:180,max:8,needs:'root',kind:'root',desc:'Creation surges through the deep'},
+{id:'seed',name:'World Seed',glyph:'●',cost:900,max:1,needs:'pulse',kind:'seed',desc:'Something remembers how to grow'},
+{id:'trunk',name:'Axis Mundi',glyph:'♧',cost:2400,max:10,needs:'seed',kind:'trunk',desc:'All roots feed the trunk'},
+{id:'particle',name:'Particle Bough',glyph:'⁙',cost:9000,max:8,needs:'trunk',kind:'branch',desc:'Matter multiplies spark power'},
+{id:'law',name:'Law Bough',glyph:'⌘',cost:9000,max:8,needs:'trunk',kind:'branch',desc:'Lowers every future node cost'},
+{id:'star',name:'Starleaf',glyph:'✺',cost:75000,max:12,needs:'particle',kind:'leaf',desc:'Stars grow faster with laws'},
+{id:'life',name:'Verdant Worlds',glyph:'❦',cost:75000,max:12,needs:'law',kind:'leaf',desc:'Life feeds on stars and time'},
+{id:'flower',name:'Flower of Recurrence',glyph:'❈',cost:900000,max:5,needs:'life',kind:'flower',desc:'Every path echoes through the others'}];
+const initial:Game={existence:0,seeds:0,bought:{},last:Date.now(),collapses:0};
+const count=(g:Game,id:Key)=>g.bought[id]||0;
+const fmt=(n:number)=>n<1e3?n.toFixed(n<10?2:0):n<1e6?(n/1e3).toFixed(2)+'K':n<1e9?(n/1e6).toFixed(2)+'M':n<1e12?(n/1e9).toFixed(2)+'B':n.toExponential(2).replace('+','');
+function rate(g:Game){const s=count(g,'spark'),e=count(g,'echo'),r=count(g,'root'),t=count(g,'trunk'),p=count(g,'particle'),l=count(g,'law'),st=count(g,'star'),life=count(g,'life'),f=count(g,'flower');let x=(s||.06)*(1+e*s*.16)*(1+r*.55)*(1+t*.8);x*=1+p*(1+s*.12);x*=1+st*st*(1+l*.15);x*=1+life*(1+st*.45);return Math.pow(x,1+f*.035)*(1+g.seeds*1.5)}
+export default function Home(){const[g,setG]=useState<Game>(initial),[ready,setReady]=useState(false),[log,setLog]=useState('There is no sound. There is no time.');
+useEffect(()=>{try{const raw=localStorage.getItem('tree-of-everything');if(raw){const old=JSON.parse(raw)as Game,dt=Math.min(21600,(Date.now()-old.last)/1000);old.existence+=rate(old)*dt*.5;old.last=Date.now();setG(old);if(dt>5)setLog(`The Tree dreamed in your absence and gathered ${fmt(rate(old)*dt*.5)} existence.`)}}catch{}setReady(true)},[]);
+useEffect(()=>{if(!ready)return;const timer=setInterval(()=>setG(v=>({...v,existence:v.existence+rate(v)/10,last:Date.now()})),100);return()=>clearInterval(timer)},[ready]);
+useEffect(()=>{if(ready)localStorage.setItem('tree-of-everything',JSON.stringify(g))},[g,ready]);
+const law=count(g,'law'),price=(n:typeof NODES[number])=>n.cost*Math.pow(2.35,count(g,n.id))*Math.pow(.94,law),visible=NODES.filter((n,i)=>i<2||!n.needs||count(g,n.needs)>0),prestige=Math.floor(Math.sqrt(g.existence/1e6));
+const buy=(n:typeof NODES[number])=>{const c=price(n);if(g.existence<c||count(g,n.id)>=n.max)return;setG(v=>({...v,existence:v.existence-c,bought:{...v.bought,[n.id]:count(v,n.id)+1}}));setLog(n.id==='seed'?'The seed opens. A memory older than this darkness stirs.':`${n.name} joins the pattern of existence.`)};
+const awaken=()=>{setG(v=>({...v,existence:v.existence+1}));setLog(g.existence<1?'For the first time, the Void is not empty.':'Potential answers your will.')},collapse=()=>{if(prestige<1)return;setG({existence:0,seeds:g.seeds+prestige,bought:{},last:Date.now(),collapses:g.collapses+1});setLog('Reality folds inward. Only the seeds remember.')};
+const era=count(g,'flower')?'LIVING COSMOS':count(g,'star')||count(g,'life')?'STELLAR AWAKENING':count(g,'seed')?'THE WORLD SEED':count(g,'root')?'FIRST ROOTS':'THE VOID',progress=Math.min(100,visible.length/NODES.length*100);
+return <main className="game-shell"><div className="stars"/><header className="topbar"><div className="brand"><span className="sigil">◉</span><div><h1>THE TREE OF EVERYTHING</h1><p>Reality Ⅰ · {era}</p></div></div><div className="resource"><small>EXISTENCE</small><strong>{fmt(g.existence)}</strong><span>+{fmt(rate(g))} / sec</span></div><button className="menu" onClick={()=>{localStorage.removeItem('tree-of-everything');setG(initial);setLog('The memory is gone. Only the Void remains.')}}>Erase memory</button></header>
+<section className="scene"><aside className="lore"><p className="eyebrow">CHRONICLE · I</p><h2>Before the beginning, there was the Void.</h2><p>Not darkness—for darkness had not yet been imagined. Reach into the silence. Ask it to become.</p><div className="whisper">“{log}”</div><div className="journey"><span style={{height:`${progress}%`}}/><small>THE JOURNEY</small><b>{Math.round(progress)}%</b></div></aside>
+<div className="tree-stage"><div className="halo"/><div className="tree-line trunk-line"/><div className="tree-line branch-left"/><div className="tree-line branch-right"/><div className="nodes">{visible.map((n,i)=>{const owned=count(g,n.id),afford=g.existence>=price(n)&&owned<n.max;return <button key={n.id} onClick={()=>buy(n)} disabled={!afford} className={`node ${n.kind} n${i} ${owned?'owned':''}`}><span className="orb">{n.glyph}</span><span className="node-card"><i>{n.kind}</i><b>{n.name}</b><em>{n.desc}</em><small>{owned}/{n.max} · {owned>=n.max?'MASTERED':fmt(price(n))}</small></span></button>})}</div>{visible.length<5&&<button className="create" onClick={awaken}><span>✦</span>{g.existence<1?'CREATE POTENTIAL':'CALL TO THE VOID'}<small>+1 existence</small></button>}</div>
+<aside className="insight"><div><p className="eyebrow">CURRENT LAW</p><h3>Creation remembers.</h3><p>Each acquired node changes the whole. Echoes scale with Sparks; Stars learn from Laws; Life feeds back into Stars.</p></div><div className="seed-vessel"><span>●</span><div><small>WORLD SEEDS</small><strong>{g.seeds}</strong></div></div><button className="collapse" disabled={prestige<1} onClick={collapse}>COLLAPSE REALITY <span>Gain {prestige} seed{prestige===1?'':'s'}</span></button><p className="hint">Available at 1.00M existence. Seeds persist through every reality.</p></aside></section>
+<footer><span>THE VOID</span><i>Nothing</i><i>Potential</i><i>Seed</i><i>Energy</i><i>Matter</i><i>Stars</i><i>Life</i><b>∞</b></footer></main>}
